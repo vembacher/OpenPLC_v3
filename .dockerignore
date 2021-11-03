@@ -20,3 +20,6 @@ out/
 
 # VS generated files
 *.CoreCompileInputs.cache
+
+#
+cmake-build-debug/

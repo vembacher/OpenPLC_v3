@@ -13,7 +13,7 @@ if [ $# -eq 0 ]; then
     echo "  custom        Skip all specific package installation and tries to install"
     echo "                OpenPLC assuming your system already has all dependencies met."
     echo "                This option can be useful if you're trying to install OpenPLC"
-    echo "                on an unsuported Linux platform or had manually installed"
+    echo "                on an unsupported Linux platform or had manually installed"
     echo "                all the dependency packages before."
     echo ""
     exit 1
@@ -34,7 +34,7 @@ function linux_install_deps {
     $1 apt-get update
     $1 apt-get install -y build-essential pkg-config bison flex autoconf \
                           automake libtool make git python3 python3-pip   \
-                          sqlite3 cmake git
+                          sqlite3 cmake git libmbedtls-dev
 }
 
 function install_py_deps {
@@ -57,7 +57,7 @@ function cmake_build_and_test {
     echo "Building the application"
     mkdir build
     cd build
-    cmake .. -DOPLC_ALL=ON
+    cmake .. -DOPLC_ALL=ON -DUA_ENABLE_ENCRYPTION=ON -DUA_NAMESPACE_ZERO=FULL
     make
 
     echo "Executing platform tests"
@@ -128,8 +128,8 @@ elif [ "$1" == "linux" ]; then
 
 elif [ "$1" == "docker" ]; then
     echo "Installing OpenPLC on Linux inside Docker"
-    linux_install_deps
-    install_py_deps
+#    linux_install_deps
+#    install_py_deps
     
     cmake_build_and_test   
     

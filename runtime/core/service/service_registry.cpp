@@ -23,19 +23,23 @@
 #include "modbusslave/slave.h"
 #include "modbusmaster/master_indexed.h"
 #include "dnp3s/dnp3.h"
+#include "opc_ua_server/opc_ua_server.h"
 
 using namespace std;
 using namespace oplc::modbusm;
+using namespace oplc::opcua_server;
 
 ServiceDefinition* services[] = {
-    new ServiceDefinition("interactive", interactive_service_run),
-    new ServiceDefinition("pstorage", pstorage_service_run, pstorage_service_init),
-    new ServiceDefinition("modbusslave", modbus_slave_service_run),
-    new ServiceDefinition("modbusmaster", modbus_master_service_run, modbus_master_before_cycle, modbus_master_after_cycle),
+        new ServiceDefinition("interactive", interactive_service_run),
+        new ServiceDefinition("pstorage", pstorage_service_run, pstorage_service_init),
+        new ServiceDefinition("modbusslave", modbus_slave_service_run),
+        new ServiceDefinition("modbusmaster", modbus_master_service_run, modbus_master_before_cycle, modbus_master_after_cycle),
 #ifdef OPLC_DNP3_OUTSTATION
-    new ServiceDefinition("dnp3s", dnp3s_service_run),
+        new ServiceDefinition("dnp3s", dnp3s_service_run),
 #endif
-    new ServiceDefinition("enip", enip_service_run)
+        new ServiceDefinition("enip", enip_service_run),
+        new ServiceDefinition("opcuaserver", opc_ua_service_run)
+
 };
 
 ServiceDefinition* services_find(const char* name)
