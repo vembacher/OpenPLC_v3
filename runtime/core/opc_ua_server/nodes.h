@@ -9,8 +9,11 @@ extern "C" {
 
 #include <mutex>
 #include <utility>
+#include <chrono>
 
 #include "glue.h"
+
+using namespace std::chrono_literals;
 
 class INodeContext
 {
