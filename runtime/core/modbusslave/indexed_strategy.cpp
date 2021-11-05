@@ -166,7 +166,9 @@ void exchange(array<oplc::PendingValue<T>, NUM_REGISTER_VALUES>& write_buffer,
 
         // If there was a write that hasn't been written, then transfer the
         // value to the read buffer.
-        if (write_buffer[index].has_pending)
+        // the check if read_buffer[index].value is null is to make sure this does not segfault
+        // this is the case if someone writes to an address that does not have a PLC variable associated with it
+        if (write_buffer[index].has_pending && read_buffer[index].value)
         {
             *read_buffer[index].value = write_buffer[index].value;
             write_buffer[index].has_pending = false;
@@ -191,7 +193,9 @@ void IndexedStrategy::Exchange()
     // writes to those.
     for (size_t index = 0; index < coil_write_buffer.size(); ++index)
     {
-        if (coil_write_buffer[index].has_pending)
+        // the check if coil_read_buffer[index].value is null is to make sure this does not segfault
+        // this is the case if someone writes to an address that does not have a PLC variable associated with it
+        if (coil_write_buffer[index].has_pending && coil_read_buffer[index].value)
         {
             coil_write_buffer[index].has_pending = false;
             *coil_read_buffer[index].value = coil_write_buffer[index].value;
