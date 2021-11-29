@@ -16,10 +16,12 @@ extern "C" {
 
 struct VariableDescription
 {
-    std::string name;
-    std::string location;
+    IecLocationDirection dir;
+    IecLocationSize size;
+    std::uint16_t msi;
     IecGlueValueType type;
-    size_t size;
+    std::uint8_t lsi;
+    std::string name;
 };
 
 std::vector<VariableDescription> get_variable_descriptions();

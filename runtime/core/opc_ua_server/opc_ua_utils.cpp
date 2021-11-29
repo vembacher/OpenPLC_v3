@@ -23,7 +23,7 @@ std::string get_active_progam()
     return result;
 }
 
-IecGlueValueType get_iec_type_from_string(std::string s)
+IecGlueValueType get_iec_type_from_string(const std::string &s)
 {
 
     if (s == "BOOL") return IECVT_BOOL;
@@ -83,6 +83,28 @@ const UA_DataType *ua_type_from_iec_type(IecGlueValueType type)
     }
 }
 
+/*
+ * Refer to: https://www.openplcproject.com/reference/plc-addressing/
+ */
+IecLocationSize get_location_size(std::string location)
+{
+    switch (location[2])
+    {
+        case 'X':
+            return IECLST_BIT;
+        case 'B':
+            return IECLST_BYTE;
+        case 'W':
+            return IECLST_WORD;
+        case 'D':
+            return IECLST_DOUBLEWORD;
+        case 'L':
+            return IECLST_LONGWORD;
+        default:
+            throw "Invalid location";
+    }
+}
+
 /* This function returns variable descriptions from the active program st file.
  * It is done via regex matching and does little to no input validation.
  * In the future this part should get replaced or rather become redundant.
@@ -91,7 +113,7 @@ std::vector<VariableDescription> get_variable_descriptions()
 {
     //very primitive regex used to parse some information from the active program st file
     std::regex re{
-            R"(([A-Za-z_0-9]*) AT (%[IQM](([X][0-9]{1,3}.[0-7])|([BWDL][0-9]{1,3}))) : (BOOL|BYTE|SINT|USINT|INT|UINT|WORD|DINT|UDINT|DWORD|REAL|LREAL|LINT|ULINT))",
+            R"(([A-Za-z_0-9]*) AT (%[IQM](([X]([0-9]{1,3}).([0-7]))|([BWDL]([0-9]{1,3})))) : (BOOL|BYTE|SINT|USINT|INT|UINT|WORD|DINT|UDINT|DWORD|REAL|LREAL|LINT|ULINT))",
             std::regex::ECMAScript};
 
     std::vector<VariableDescription> result;
@@ -101,7 +123,8 @@ std::vector<VariableDescription> get_variable_descriptions()
     auto active_program = get_active_progam();
     auto path = (!active_program.empty()) ? ("./etc/st_files/" + active_program) : "blank_program.st";
     std::ifstream file{path};
-    if(!file) {
+    if (!file)
+    {
         file = std::ifstream{"../etc/st_files/" + active_program};
     }
     bool is_var_block = false;
@@ -123,9 +146,17 @@ std::vector<VariableDescription> get_variable_descriptions()
             if (std::regex_search(line, matches, re))
             {
                 VariableDescription variable;
+
                 variable.name = matches[1];
-                variable.location = matches[2];
-                variable.type = get_iec_type_from_string(matches[5]);
+
+                //Locations: I -> input, Q -> output, M -> memory
+                auto dir = matches[2].str().at(1);
+                variable.dir = (dir == 'I') ? (IECLDT_IN) : ((dir == 'Q') ? (IECLDT_OUT) : (IECLDT_MEM));
+
+                variable.size = get_location_size(matches[2]);
+                variable.msi = (matches[5].matched) ? std::stoi(matches[5]) : std::stoi(matches[8]);
+                variable.lsi = (matches[6].matched) ? std::stoi(matches[6]) : 0;
+                variable.type = get_iec_type_from_string(matches[9]);
                 result.emplace_back(variable);
             }
         }
