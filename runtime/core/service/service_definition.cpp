@@ -31,60 +31,63 @@ extern const char OPLCGLUE_MD5_DIGEST[];
 using namespace std;
 
 
-void null_binding_handler(const GlueVariablesBinding& binding) {}
-void null_handler() {}
-
-ServiceDefinition::ServiceDefinition(const char* name,
-                                     service_start_fn start_fn) :
-    name(name),
-    init_fn(null_binding_handler),
-    finalize_fn(null_binding_handler),
-    start_fn(start_fn),
-    before_cycle_fn(null_handler),
-    after_cycle_fn(null_handler),
-    running(false),
-    config_buffer()
+void null_binding_handler(const GlueVariablesBinding &binding)
 {}
 
-ServiceDefinition::ServiceDefinition(const char* name,
+void null_handler()
+{}
+
+ServiceDefinition::ServiceDefinition(const char *name,
+                                     service_start_fn start_fn) :
+        name(name),
+        init_fn(null_binding_handler),
+        finalize_fn(null_binding_handler),
+        start_fn(start_fn),
+        before_cycle_fn(null_handler),
+        after_cycle_fn(null_handler),
+        running(false),
+        config_buffer()
+{}
+
+ServiceDefinition::ServiceDefinition(const char *name,
                                      service_start_fn start_fn,
                                      service_init_fn init_fn) :
-    name(name),
-    start_fn(start_fn),
-    init_fn(init_fn),
-    finalize_fn(null_binding_handler),
-    before_cycle_fn(null_handler),
-    after_cycle_fn(null_handler),
-    running(false),
-    config_buffer()
+        name(name),
+        start_fn(start_fn),
+        init_fn(init_fn),
+        finalize_fn(null_binding_handler),
+        before_cycle_fn(null_handler),
+        after_cycle_fn(null_handler),
+        running(false),
+        config_buffer()
 {}
 
-ServiceDefinition::ServiceDefinition(const char* name,
+ServiceDefinition::ServiceDefinition(const char *name,
                                      service_start_fn start_fn,
                                      service_init_fn init_fn,
                                      service_finalize_fn finalize_fn) :
-    name(name),
-    start_fn(start_fn),
-    init_fn(init_fn),
-    finalize_fn(finalize_fn),
-    before_cycle_fn(null_handler),
-    after_cycle_fn(null_handler),
-    running(false),
-    config_buffer()
+        name(name),
+        start_fn(start_fn),
+        init_fn(init_fn),
+        finalize_fn(finalize_fn),
+        before_cycle_fn(null_handler),
+        after_cycle_fn(null_handler),
+        running(false),
+        config_buffer()
 {}
 
-ServiceDefinition::ServiceDefinition(const char* name,
+ServiceDefinition::ServiceDefinition(const char *name,
                                      service_start_fn start_fn,
                                      service_before_cycle_fn before_cycle_fn,
                                      service_after_cycle_fn fafter_cycle_fn) :
-    name(name),
-    start_fn(start_fn),
-    init_fn(null_binding_handler),
-    finalize_fn(null_binding_handler),
-    before_cycle_fn(before_cycle_fn),
-    after_cycle_fn(fafter_cycle_fn),
-    running(false),
-    config_buffer()
+        name(name),
+        start_fn(start_fn),
+        init_fn(null_binding_handler),
+        finalize_fn(null_binding_handler),
+        before_cycle_fn(before_cycle_fn),
+        after_cycle_fn(fafter_cycle_fn),
+        running(false),
+        config_buffer()
 {}
 
 void ServiceDefinition::initialize()
@@ -101,7 +104,7 @@ void ServiceDefinition::finalize()
     this->finalize_fn(bindings);
 }
 
-void ServiceDefinition::start(const char* config)
+void ServiceDefinition::start(const char *config)
 {
     // TODO there is a race condition here in creating the thread. This race
     // condition is old so I'm not trying to solve it now.
@@ -162,9 +165,9 @@ void ServiceDefinition::after_cycle()
     }
 }
 
-void* ServiceDefinition::run_service(void* user_data)
+void *ServiceDefinition::run_service(void *user_data)
 {
-    auto service = reinterpret_cast<ServiceDefinition*>(user_data);
+    auto service = reinterpret_cast<ServiceDefinition *>(user_data);
     spdlog::debug("Service {} thread started", service->name);
 
     GlueVariablesBinding bindings(&bufferLock, OPLCGLUE_GLUE_SIZE,
