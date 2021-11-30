@@ -292,7 +292,6 @@ std::vector<INodeContext *> add_nodes_to_server(UA_Server *server, const GlueVar
         } else
         {
             auto glue_group = reinterpret_cast<const GlueBoolGroup *>(glue_var.value);
-            std::cout << p->name << '\n';
             for (int j = 0; j < 8; ++j)
             {
                 if (!glue_group->values[j])

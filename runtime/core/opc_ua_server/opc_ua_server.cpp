@@ -94,14 +94,7 @@ void oplc::opcua_server::opc_ua_service_run(const GlueVariablesBinding &binding,
 
     auto server = get_ua_server_with_encryption(binding, config);
 
-
-    for (int i = 0; i < binding.size; ++i)
-    {
-        std::lock_guard<std::mutex> guard(*binding.buffer_lock);
-        auto glue = binding.glue_variables[i];
-        std::cout << i << "Glue(" << glue.size << "," << glue.type << ")\n";
-    }
-
+    
     auto context_store = add_nodes_to_server(server, binding);
     auto retval = UA_Server_run(server, &run);
 
