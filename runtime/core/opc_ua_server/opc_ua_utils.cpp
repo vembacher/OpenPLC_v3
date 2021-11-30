@@ -7,21 +7,6 @@
 #include "glue.h"
 #include "opc_ua_utils.h"
 
-std::string get_active_progam()
-{
-
-    std::ifstream file{"../etc/active_program"};
-    if (!file)
-    {
-        //TODO: clean this up, it's for debugging
-        file = std::ifstream{"/workdir/etc/active_program"};
-//        return "";
-        if (!file) return "";
-    }
-    std::string result;
-    std::getline(file, result);
-    return result;
-}
 
 IecGlueValueType get_iec_type_from_string(const std::string &s)
 {
@@ -120,13 +105,21 @@ std::vector<VariableDescription> get_variable_descriptions()
 
 
     //TODO: re-write the code about getting the active program, it's janky as hell
-    auto active_program = get_active_progam();
-    auto path = (!active_program.empty()) ? ("./etc/st_files/" + active_program) : "blank_program.st";
-    std::ifstream file{path};
-    if (!file)
+    std::ifstream file_active_name{"../etc/active_program"}; //default case
+    std::string active_program_name;
+    std::ifstream file;
+    if (file_active_name)
     {
-        file = std::ifstream{"../etc/st_files/" + active_program};
+        std::getline(file_active_name, active_program_name);
+        file = std::ifstream("../etc/st_files/" + active_program_name);
     }
+    else
+    {
+        file_active_name = std::ifstream{"./etc/active_program"};
+        std::getline(file_active_name, active_program_name);
+        file = std::ifstream("./etc/st_files/" + active_program_name);
+    }
+
     bool is_var_block = false;
     while (file)
     {
@@ -136,11 +129,13 @@ std::vector<VariableDescription> get_variable_descriptions()
         {
             is_var_block = true;
             continue;
-        } else if (line == "  END_VAR")
+        }
+        else if (line == "  END_VAR")
         {
             is_var_block = false;
             continue;
-        } else if (is_var_block)
+        }
+        else if (is_var_block)
         {
             std::smatch matches;
             if (std::regex_search(line, matches, re))
