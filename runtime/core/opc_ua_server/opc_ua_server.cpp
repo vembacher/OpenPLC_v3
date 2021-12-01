@@ -20,16 +20,20 @@ extern "C" {
 UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, const char *config)
 {
     //NOTE: currently the paths are hard-coded, the structure is based on how UaExpert stores certificates.
-    //      a future goal will be that this is configurable and more convient.
-    auto certificate = loadFile("/etc/openplc/PKI/own/certs/cert.der");
-    auto privateKey = loadFile("/etc/openplc/PKI/own/private/key.der");
-    auto trusted_ca = loadFile("/etc/openplc/PKI/trusted/certs/ca-chain.cert.der");
-    auto ua_expert = loadFile("/etc/openplc/PKI/trusted/certs/uaexpert.der");
-    std::vector<UA_ByteString> trusted{ua_expert, trusted_ca};
+    //      a future goal will be that this is configurable and more convenient.
+    auto certificate = loadFile("../etc/PKI/own/certs/plc.cert.der");
+    auto privateKey = loadFile("../etc/PKI/own/private/plc.key.der");
+    auto trusted_root_ca = loadFile("../etc/PKI/trusted/certs/ca.cert.der");
+    auto trusted_intermediate_ca = loadFile("../etc/PKI/trusted/certs/ca-chain.cert.der");
+    auto ua_expert = loadFile("../etc/PKI/trusted/certs/uaexpert.der");
+    auto trusted = (ua_expert.length) ?
+                   (std::vector<UA_ByteString>{ua_expert, trusted_root_ca, trusted_intermediate_ca}) :
+                   (std::vector<UA_ByteString>{trusted_root_ca, trusted_intermediate_ca});
 
     // We need a CRL for every CA, otherwise certificates signed by this CA will NOT be accepted.
-    UA_STACKARRAY(UA_ByteString, revocation_list, 1);
-    revocation_list[0] = loadFile("/etc/openplc/PKI/trusted/crl/intermediate.crl.pem");
+    UA_STACKARRAY(UA_ByteString, revocation_list, 2);
+    revocation_list[0] = loadFile("../etc/PKI/trusted/crl/ca.crl.pem");
+    revocation_list[1] = loadFile("../etc/PKI/trusted/crl/intermediate.crl.pem");
 
 //    std::vector<UA_ByteString> trusted = load_files_in_dir("/etc/openplc/PKI/trusted/certs");
 //    std::vector<UA_ByteString> crls = load_files_in_dir("/etc/openplc/PKI/trusted/crl");
@@ -39,16 +43,16 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
     auto server = UA_Server_new();
     auto server_config = UA_Server_getConfig(server);
     auto retval = UA_ServerConfig_setDefaultWithSecurityPolicies(
-            server_config,          //*conf,
-            4840,         //portNumber,
+            server_config,          // *conf,
+            4840,         // portNumber,
             &certificate,           // *certificate,
-            &privateKey,            //U*privateKey,
+            &privateKey,            // *privateKey,
             trusted.data(),         // *trustList,
-            trusted.size(),         //trustListSize,
+            trusted.size(),         // trustListSize,
             issuers,                // *issuerList,
-            0,           //issuerListSize,
-            revocation_list,        //*revocationList,
-            1         //revocationListSize
+            0,           // issuerListSize,
+            revocation_list,        // *revocationList,
+            2         // revocationListSize
     );
 
     if (retval != UA_STATUSCODE_GOOD)
@@ -94,7 +98,7 @@ void oplc::opcua_server::opc_ua_service_run(const GlueVariablesBinding &binding,
 
     auto server = get_ua_server_with_encryption(binding, config);
 
-    
+
     auto context_store = add_nodes_to_server(server, binding);
     auto retval = UA_Server_run(server, &run);
 
