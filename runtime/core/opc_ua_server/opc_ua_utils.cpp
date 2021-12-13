@@ -4,6 +4,7 @@
 #include <vector>
 #include <regex>
 
+#include "spdlog/spdlog.h"
 #include "glue.h"
 #include "opc_ua_utils.h"
 
@@ -104,10 +105,11 @@ std::vector<VariableDescription> get_variable_descriptions()
     std::vector<VariableDescription> result;
 
 
-    //TODO: re-write the code about getting the active program, it's janky as hell
+    spdlog::debug("OPC UA server: Finding active program.");
     std::ifstream file_active_name{"../etc/active_program"}; //default case
     std::string active_program_name;
     std::ifstream file;
+    spdlog::debug("OPC UA server: Opening active program.");
     if (file_active_name)
     {
         std::getline(file_active_name, active_program_name);
@@ -119,7 +121,7 @@ std::vector<VariableDescription> get_variable_descriptions()
         std::getline(file_active_name, active_program_name);
         file = std::ifstream("./etc/st_files/" + active_program_name);
     }
-
+    spdlog::debug("OPC UA server: Parsing active program.");
     bool is_var_block = false;
     while (file)
     {

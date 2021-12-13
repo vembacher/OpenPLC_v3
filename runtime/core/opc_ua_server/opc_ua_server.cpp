@@ -1,6 +1,7 @@
 //
 // Created by v on 08.10.21.
 //
+#include "spdlog/spdlog.h"
 
 #include <string>
 #include "opc_ua_server.h"
@@ -17,10 +18,13 @@ extern "C" {
 #include <cstdlib>
 #include <mutex>
 
+
 UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, const char *config)
 {
     //NOTE: currently the paths are hard-coded, the structure is based on how UaExpert stores certificates.
     //      a future goal will be that this is configurable and more convenient.
+
+    spdlog::debug("OPC UA server: Loading PKI related files.");
     auto certificate = loadFile("../etc/PKI/own/certs/plc.cert.der");
     auto privateKey = loadFile("../etc/PKI/own/private/plc.key.der");
     auto trusted_root_ca = loadFile("../etc/PKI/trusted/certs/ca.cert.der");
@@ -40,7 +44,9 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
 
     //TODO: handle issuers
     UA_ByteString *issuers = nullptr;
+
     auto server = UA_Server_new();
+    spdlog::debug("OPC UA server: Setting server config.");
     auto server_config = UA_Server_getConfig(server);
     auto retval = UA_ServerConfig_setDefaultWithSecurityPolicies(
             server_config,          // *conf,
@@ -81,6 +87,7 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
 //            std::cerr << "could not load crl at path: '" << elem.data << "'\n";
 //        }
     }
+    spdlog::debug("OPC UA server: Cleaning up filedescriptors.");
     UA_ByteString_clear(&certificate);
     UA_ByteString_clear(&privateKey);
     for (auto p: trusted)
@@ -98,12 +105,14 @@ void oplc::opcua_server::opc_ua_service_run(const GlueVariablesBinding &binding,
 
     auto server = get_ua_server_with_encryption(binding, config);
 
-
+    spdlog::debug("OPC UA server: Adding program related nodes.");
     auto context_store = add_nodes_to_server(server, binding);
+    spdlog::debug("OPC UA server: Running server.");
     auto retval = UA_Server_run(server, &run);
 
     //TODO: delete context_store items safely
     // reference: https://stackoverflow.com/questions/16527673/c-one-stdvector-containing-template-class-of-multiple-types
+    spdlog::debug("OPC UA server: Stopping server.");
     UA_Server_delete(server);
 
 };
