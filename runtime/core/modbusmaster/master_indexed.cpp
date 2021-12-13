@@ -103,40 +103,52 @@ int cfg_handler(void *user_data, const char *section,
     if (oplc::modbusm::common_cfg_handler(*config->masters, name, value) == 0)
     {
         // It was already handled
-    } else if (oplc::strcmp_with_index(name, "discrete_inputs_start", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "discrete_inputs_start", max, &index) == 0)
     {
         mappings->at(index).discrete_inputs.start_address = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "discrete_inputs_size", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "discrete_inputs_size", max, &index) == 0)
     {
         mappings->at(index).discrete_inputs.num_regs = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "coils_start", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "coils_start", max, &index) == 0)
     {
         mappings->at(index).coils.start_address = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "coils_size", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "coils_size", max, &index) == 0)
     {
         mappings->at(index).coils.num_regs = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "input_registers_start", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "input_registers_start", max, &index) == 0)
     {
         mappings->at(index).input_registers.start_address = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "input_registers_size", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "input_registers_size", max, &index) == 0)
     {
         mappings->at(index).input_registers.num_regs = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "holding_registers_read_start", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "holding_registers_read_start", max, &index) == 0)
     {
         mappings->at(index).holding_read_registers.start_address = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "holding_registers_read_size", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "holding_registers_read_size", max, &index) == 0)
     {
         mappings->at(index).holding_read_registers.num_regs = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "holding_registers_start", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "holding_registers_start", max, &index) == 0)
     {
         mappings->at(index).holding_registers.start_address = atoi(value);
-    } else if (oplc::strcmp_with_index(name, "holding_registers_size", max, &index) == 0)
+    }
+    else if (oplc::strcmp_with_index(name, "holding_registers_size", max, &index) == 0)
     {
         mappings->at(index).holding_registers.num_regs = atoi(value);
-    } else if (strcmp(name, "enabled") == 0)
+    }
+    else if (strcmp(name, "enabled") == 0)
     {
         // Nothing to do here - we already know this is enabled
-    } else
+    }
+    else
     {
         spdlog::warn("Unknown configuration item {}", name);
         return -1;
@@ -207,7 +219,7 @@ void *oplc::modbusm::modbus_master_indexed_poll(void *args)
 
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = (1000 * 1000 * 1000 * 28L) / master->rtu_baud_rate;
+    if (master->rtu_baud_rate) { ts.tv_nsec = (1000 * 1000 * 1000 * 28L) / master->rtu_baud_rate; }
 
     while (*master_args->run)
     {
@@ -228,7 +240,8 @@ void *oplc::modbusm::modbus_master_indexed_poll(void *args)
                     *reinterpret_cast<IEC_LINT *>(error_var->value) += 1;
                 }
                 failed_attempts += 1;
-            } else
+            }
+            else
             {
                 spdlog::info("Connected to MB device {}", master->name);
                 is_connected = true;
@@ -325,7 +338,8 @@ void *oplc::modbusm::modbus_master_indexed_poll(void *args)
         {
             auto scale_factor = std::min(10, failed_attempts);
             this_thread::sleep_until(start + (master->poll_interval * scale_factor));
-        } else
+        }
+        else
         {
             this_thread::sleep_until(start + master->poll_interval);
         }
@@ -366,11 +380,13 @@ void assign_mappings(const GlueVariablesBinding &bindings)
         {
             int_output_buf.assign(glue_var.msi - MAPPED_GLUE_START,
                                   reinterpret_cast<IEC_UINT *>(glue_var.value));
-        } else if (glue_var.dir == IECLDT_IN && glue_var.size == IECLST_WORD)
+        }
+        else if (glue_var.dir == IECLDT_IN && glue_var.size == IECLST_WORD)
         {
             int_input_buf.assign(glue_var.msi - MAPPED_GLUE_START,
                                  reinterpret_cast<IEC_UINT *>(glue_var.value));
-        } else if (glue_var.dir == IECLDT_OUT && glue_var.size == IECLST_BIT)
+        }
+        else if (glue_var.dir == IECLDT_OUT && glue_var.size == IECLST_BIT)
         {
             auto group = reinterpret_cast<GlueBoolGroup *>(glue_var.value);
             // We assign the index, one by one, into the mapping
@@ -379,7 +395,8 @@ void assign_mappings(const GlueVariablesBinding &bindings)
                 auto offset = glue_var.msi - MAPPED_GLUE_START;
                 bool_output_buf.assign(offset * 8 + i, group->values[i]);
             }
-        } else if (glue_var.dir == IECLDT_IN && glue_var.size == IECLST_BIT)
+        }
+        else if (glue_var.dir == IECLDT_IN && glue_var.size == IECLST_BIT)
         {
             auto group = reinterpret_cast<GlueBoolGroup *>(glue_var.value);
             // We assign the index, one by one, into the mapping
