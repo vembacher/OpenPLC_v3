@@ -180,17 +180,7 @@ endif ()
 include(FetchContent)
 
 
-#FetchContent_Declare(mbedtls
-#        PREFIX              "mbedtls"
-#        GIT_REPOSITORY      "https://github.com/ARMmbed/mbedtls"
-#        GIT_TAG             "8df2f8e7b9c7bb9390ac74bb7bace27edca81a2b" # v3.0.0 release
-#)
 
-#FetchContent_GetProperties(mbedtls)
-#if(NOT mbedtls_POPULATED)
-#    FetchContent_Populate(mbedtls)
-#    add_subdirectory(${mbedtls_SOURCE_DIR} ${mbedtls_BINARY_DIR})
-#endif()
 set(UA_ENABLE_ENCRYPTION ON)
 set(UA_NAMESPACE_ZERO FULL)
 
@@ -295,7 +285,6 @@ if (OPLC_MAIN_PROGRAM)
     endif ()
 
     #TODO: update this
-    #    target_link_libraries(openplc mbedtls)
     target_link_libraries(openplc open62541)
 
     # -fpermissive will allow some nonconforming code to compile
