@@ -26,7 +26,14 @@ namespace oplc
                 address("127.0.0.1"),
                 application_uri("urn:localhost:OpenPLCProject:OpenPLC"),
                 product_uri("https://github.com/thiagoralves/OpenPLC_v3"),
-                server_cert(false)
+                encryption_on(true),
+                server_cert_path("../etc/PKI/own/certs/plc.cert.der"),
+                server_pkey_path("../etc/PKI/own/private/plc.key.der"),
+                trust_list_paths({"../etc/PKI/trusted/certs/ca.cert.der",
+                                  "../etc/PKI/trusted/certs/ca-chain.cert.der",
+                                  "../etc/PKI/trusted/certs/uaexpert.der"}),
+                revocation_list_paths({"../etc/PKI/trusted/crl/ca.crl.pem",
+                                       "../etc/PKI/trusted/crl/intermediate.crl.pem"})
         {}
 
         // general info
@@ -35,11 +42,10 @@ namespace oplc
         std::string product_uri;
 
         // security settings
-        bool server_cert;
+        bool encryption_on;
         std::string server_cert_path;
         std::string server_pkey_path;
         std::vector<std::string> trust_list_paths;
-        std::vector<std::string> issuer_list_paths;
         std::vector<std::string> revocation_list_paths;
 
         uint16_t port;

@@ -1,12 +1,12 @@
-
-
 #include <fstream>
 #include <vector>
 #include <regex>
+#include <exception>
 
 #include "spdlog/spdlog.h"
 #include "glue.h"
 #include "opc_ua_utils.h"
+#include "opc_ua_server.h"
 
 
 IecGlueValueType get_iec_type_from_string(const std::string &s)
@@ -87,7 +87,7 @@ IecLocationSize get_location_size(std::string location)
         case 'L':
             return IECLST_LONGWORD;
         default:
-            throw "Invalid location";
+             throw std::invalid_argument( "Invalid Iec Location" );
     }
 }
 
@@ -161,3 +161,8 @@ std::vector<VariableDescription> get_variable_descriptions()
     return result;
 }
 
+oplc::OpcUaServerConfig get_config(const char *config_string)
+{
+    spdlog::warn("OPC UA server: oplc::OpcUaServerConfig get_config(...) is still unimplemented.");
+    return oplc::OpcUaServerConfig{};
+}
