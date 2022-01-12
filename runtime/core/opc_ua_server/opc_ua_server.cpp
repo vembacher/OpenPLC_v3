@@ -31,7 +31,7 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
     auto trusted_intermediate_ca = loadFile("../etc/PKI/trusted/certs/ca-chain.cert.der");
     auto ua_expert = loadFile("../etc/PKI/trusted/certs/uaexpert.der");
     auto trusted = (ua_expert.length) ?
-                   (std::vector<UA_ByteString>{ua_expert, trusted_root_ca, trusted_intermediate_ca}) :
+                   (std::vector<UA_ByteString>{trusted_root_ca, trusted_intermediate_ca, ua_expert}) :
                    (std::vector<UA_ByteString>{trusted_root_ca, trusted_intermediate_ca});
 
     // We need a CRL for every CA, otherwise certificates signed by this CA will NOT be accepted.
@@ -63,37 +63,37 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
 
     if (retval != UA_STATUSCODE_GOOD)
     {
-        std::cerr << "OPC UA Server: Error adding default config.\n";
+        spdlog::error("OPC UA server: Error adding default config.");
+
         if (certificate.length == 0)
         {
-            std::cerr << "Could not load certificate\n";
+            spdlog::error("OPC UA server: Could not load certificate.");
         }
         if (privateKey.length == 0)
         {
+            spdlog::error("OPC UA server: Could not load private key.");
             std::cerr << "Could not load private key\n";
         }
-        if (trusted.empty())
+        if (not ua_expert.length)
         {
-            std::cerr << "Could not load trusted\n";
+            spdlog::error("OPC UA server: could not load UaExpert cert as trusted cert.");
         }
-//        if (crls.size() == 0) {
-//            std::cerr << "Could not load crls\n";
-//        }
-        for (const auto &elem: trusted)
+        if (not trusted_root_ca.length)
         {
-            std::cerr << "could not load trusted cert at path: '" << elem.data << "'\n";
+            spdlog::error("OPC UA server: could not load trusted root cert.");
         }
-//        for (const auto &elem: crls) {
-//            std::cerr << "could not load crl at path: '" << elem.data << "'\n";
-//        }
+        if (not trusted_intermediate_ca.length)
+        {
+            spdlog::error("OPC UA server: could not load trusted intermediate cert.");
+        }
+        exit(0);
     }
     spdlog::debug("OPC UA server: Cleaning up filedescriptors.");
     UA_ByteString_clear(&certificate);
     UA_ByteString_clear(&privateKey);
     for (auto p: trusted)
     { UA_ByteString_clear(&p); }
-//    for (auto p: crls) { UA_ByteString_clear(&p); }
-    UA_ByteString_clear(&revocation_list[0]);
+    for (auto p: revocation_list) { UA_ByteString_clear(&p); }
     return server;
 }
 
