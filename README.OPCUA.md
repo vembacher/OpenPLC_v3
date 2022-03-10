@@ -35,6 +35,9 @@ If anyone wishes to collaborate, feel free to send [me](https://github.com/vemba
   UA increases the compilation times by a lot, especially if we are using the DI and PLCOpen nodesets.
 - [ ] more ToDos will be added
 
+## FixMes
+
+
 ## Other possible future goals
 
 - move configuration via socket to configuration via OPC UA methods

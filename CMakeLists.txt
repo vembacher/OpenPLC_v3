@@ -183,11 +183,11 @@ include(FetchContent)
 
 set(UA_ENABLE_ENCRYPTION ON)
 set(UA_NAMESPACE_ZERO FULL)
-
+set(UA_LOGLEVEL 100)
 FetchContent_Declare(open62541
         PREFIX "open62541"
         GIT_REPOSITORY "https://github.com/open62541/open62541.git"
-        GIT_TAG "ecf5a703785877a8719a0cda863a98455f7d5d12" # v1.2.2 release
+        GIT_TAG "559cee54a298174a15de37612ee61f9da8fcc886" # v1.2.4 release
         )
 
 #FetchContent_MakeAvailable(mbedtls open62541)
@@ -249,6 +249,7 @@ if (OPLC_MAIN_PROGRAM)
             runtime/core/enip/*.cpp
             runtime/vendor/inih-r46/*.c
             runtime/core/opc_ua_server/*.cpp
+            runtime/core/opc_ua_server/server_config.cpp
             )
 
     include_directories(${OPLC_USER_DIR})

@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <functional>
+#include <cstring>
 
 extern "C" {
 #include <open62541/server.h>
@@ -29,10 +30,17 @@ updateCurrentValue(UA_Server *server, NodeContext<T> *context)
 
 template<typename T>
 static void
-beforeReadValue(UA_Server *server, const UA_NodeId *sessionId, void *sessionContext, const UA_NodeId *nodeid,
+beforeReadValue(UA_Server *server, const UA_NodeId *sessionId, void *sessionContext, const UA_NodeId *nodeId,
                 void *nodeContext, const UA_NumericRange *range, const UA_DataValue *data)
 {
     updateCurrentValue<T>(server, static_cast<NodeContext<T> *>(nodeContext));
+
+
+    UA_LOG_INFO(
+            UA_Log_Stdout,
+            UA_LOGCATEGORY_USERLAND,
+            "The variable was read."
+    );
 }
 
 template<typename T>
@@ -42,11 +50,17 @@ static void afterWriteValue(UA_Server *server,
                             const UA_NumericRange *range, const UA_DataValue *data)
 {
     //sessionId->identifier.numeric != 1 should catch scenario where we write again to the context after just reading
-    //because this methond is called after we call 'UA_Server_writeValue(server, currentNodeId, value);'
+    //because this method is called after we call 'UA_Server_writeValue(server, currentNodeId, value);'
     // in updateCurrentValue
     if (sessionId->identifier.numeric != 1 && data->hasValue)
     {
         auto context = static_cast<NodeContext<T> *>(nodeContext);
+
+        UA_LOG_INFO(
+                UA_Log_Stdout,
+                UA_LOGCATEGORY_USERLAND,
+                "The variable was written to."
+        );
         context->write(*static_cast<T *>(data->value.data));
     }
 }
@@ -106,7 +120,6 @@ std::vector<INodeContext *> add_nodes_to_server(UA_Server *server, const GlueVar
     std::vector<INodeContext *> context_store; //FIXME: prevent this from leaking
     for (int i = 0; i < bindings.size; ++i)
     {
-        auto p = &variables[i];
         auto glue_var = bindings.glue_variables[i];
         if (glue_var.type != IECVT_BOOL)
         {
@@ -289,7 +302,8 @@ std::vector<INodeContext *> add_nodes_to_server(UA_Server *server, const GlueVar
                 default:
                     break;
             }
-        } else
+        }
+        else
         {
             auto glue_group = reinterpret_cast<const GlueBoolGroup *>(glue_var.value);
             for (int j = 0; j < 8; ++j)

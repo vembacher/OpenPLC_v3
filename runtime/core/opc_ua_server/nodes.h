@@ -12,6 +12,7 @@ extern "C" {
 #include <chrono>
 
 #include "glue.h"
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -35,8 +36,8 @@ public:
         {
             std::lock_guard<std::mutex> glue_lock{*mutex_glue};
             cache = *value;
-            cache_timestamp = std::chrono::system_clock::now();
         }
+        cache_timestamp = std::chrono::system_clock::now();
         return cache;
     }
 

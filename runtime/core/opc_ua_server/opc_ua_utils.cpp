@@ -7,7 +7,8 @@
 #include "glue.h"
 #include "opc_ua_utils.h"
 #include "opc_ua_server.h"
-
+#include "ini_util.h"
+#include "ini.h"
 
 IecGlueValueType get_iec_type_from_string(const std::string &s)
 {
@@ -87,7 +88,7 @@ IecLocationSize get_location_size(std::string location)
         case 'L':
             return IECLST_LONGWORD;
         default:
-             throw std::invalid_argument( "Invalid Iec Location" );
+            throw std::invalid_argument("Invalid Iec Location");
     }
 }
 
@@ -161,8 +162,117 @@ std::vector<VariableDescription> get_variable_descriptions()
     return result;
 }
 
-oplc::OpcUaServerConfig get_config(const char *config_string)
+std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> parse_users(const char *path)
 {
-    spdlog::warn("OPC UA server: oplc::OpcUaServerConfig get_config(...) is still unimplemented.");
-    return oplc::OpcUaServerConfig{};
+
+    //very primitive regex used to parse some information from the active program st file
+    std::regex re{
+            R"(([A-Za-z0-9]{1,128}),([A-Za-z0-9*.!@#$%^&\(\)\{\}\[\]:;<>,.?\/~_\+\-=|]{8,128}))",
+            std::regex::ECMAScript};
+
+    std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> result;
+    auto file = std::ifstream(path);
+    while (file)
+    {
+        std::string line;
+        std::getline(file, line);
+        std::smatch matches;
+
+        if (std::regex_search(line, matches, re))
+        {
+            std::string user;
+            std::string password;
+
+            user = matches[1];
+            password = matches[2];
+            oplc::opcua_server::UA_UsernamePasswordLogin login = {
+                    UA_String_fromChars(user.data()),
+                    UA_String_fromChars(password.data())
+            };
+            result.emplace_back(login);
+        }
+    }
+    return result;
+
+}
+
+int opcua_server_cfg_handler(void *user_data, const char *section,
+                             const char *name, const char *value)
+{
+    if (strcmp("opcuaserver", section) != 0)
+    {
+        return 0;
+    }
+
+    auto config = reinterpret_cast<oplc::OpcUaServerConfig *>(user_data);
+
+    if (strcmp(name, "port") == 0)
+    {
+        char *p_end;
+        config->port = std::strtol(value, &p_end, 10);
+    }
+    else if (strcmp(name, "address") == 0)
+    {
+        config->address = value;
+    }
+    else if (strcmp(name, "allow_anonymous") == 0)
+    {
+        if (strncmp(value, "true", 4) == 0)
+            config->allow_anonymous = true;
+        else
+            config->allow_anonymous = false;
+    }
+    else if (strcmp(name, "application_uri") == 0)
+    {
+        config->application_uri = value;
+    }
+    else if (strcmp(name, "product_uri") == 0)
+    {
+        config->product_uri = value;
+    }
+    else if (strcmp(name, "encryption_on") == 0)
+    {
+        if (strncmp(value, "true", 4) == 0)
+            config->encryption_on = true;
+        else
+            config->encryption_on = false;
+    }
+    else if (strcmp(name, "server_cert_path") == 0)
+    {
+        config->server_cert_path = value;
+    }
+    else if (strcmp(name, "server_pkey_path") == 0)
+    {
+        config->server_pkey_path = value;
+    }
+    else if (strcmp(name, "users_path") == 0)
+    {
+        config->password_logins = parse_users(value);
+    }
+    else if (strcmp(name, "trust_list_paths") == 0)
+    {
+        spdlog::warn("OPCUA Server: 'trust_list_paths' config field is not implemented, using default.");
+    }
+    else if (strcmp(name, "revocation_list_paths") == 0)
+    {
+        spdlog::warn("OPC UA Server: 'revocation_list_paths' config field is not implemented, using default.");
+    }
+
+
+    else
+    {
+        spdlog::warn("Unknown configuration item {}", name);
+        return -1;
+    }
+
+    return 0;
+}
+
+oplc::OpcUaServerConfig get_config()
+{
+    auto config = oplc::OpcUaServerConfig{};
+    auto cfg_stream = oplc::open_config();
+    ini_parse_stream(oplc::istream_fgets, cfg_stream.get(),
+                     opcua_server_cfg_handler, &config);
+    return config;
 }

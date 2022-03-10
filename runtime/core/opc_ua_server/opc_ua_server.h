@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "glue.h"
+#include "access_control.h"
 
 /** \addtogroup openplc_runtime
  *  @{
@@ -25,15 +26,20 @@ namespace oplc
                 port(4840),
                 address("127.0.0.1"),
                 application_uri("urn:localhost:OpenPLCProject:OpenPLC"),
-                product_uri("https://github.com/thiagoralves/OpenPLC_v3"),
+                product_uri("https://github.com/vembacher/OpenPLC_v3"),
                 encryption_on(true),
-                server_cert_path("../etc/PKI/own/certs/plc.cert.der"),
+                allow_anonymous(true),
+                server_cert_path("../etc/PKI/own/certs/plc.crt.der"),
                 server_pkey_path("../etc/PKI/own/private/plc.key.der"),
-                trust_list_paths({"../etc/PKI/trusted/certs/ca.cert.der",
-                                  "../etc/PKI/trusted/certs/ca-chain.cert.der",
-                                  "../etc/PKI/trusted/certs/uaexpert.der"}),
-                revocation_list_paths({"../etc/PKI/trusted/crl/ca.crl.pem",
-                                       "../etc/PKI/trusted/crl/intermediate.crl.pem"})
+                trust_list_paths({
+//                                         "../etc/PKI/trusted/certs/uaexpert.der"
+                                 }),
+                issuers_paths({
+                                      "../etc/PKI/trusted/certs/ca.crt.der",
+                              }),
+                revocation_list_paths({
+                                              "../etc/PKI/trusted/crl/ca.crl"
+                                      })
         {}
 
         // general info
@@ -46,9 +52,14 @@ namespace oplc
         std::string server_cert_path;
         std::string server_pkey_path;
         std::vector<std::string> trust_list_paths;
+        std::vector<std::string> issuers_paths;
         std::vector<std::string> revocation_list_paths;
+        std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> password_logins;
+
+        bool allow_anonymous;
 
         uint16_t port;
+
     };
     namespace opcua_server
     {
