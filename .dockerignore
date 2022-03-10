@@ -4,6 +4,7 @@
 **/.vs/
 .vscode/
 .idea/
+etc/PKI
 
 .deps/
 bin/
