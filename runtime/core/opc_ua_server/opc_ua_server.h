@@ -32,10 +32,10 @@ namespace oplc
                 server_cert_path("../etc/PKI/own/certs/plc.crt.der"),
                 server_pkey_path("../etc/PKI/own/private/plc.key.der"),
                 trust_list_paths({
-//                                         "../etc/PKI/trusted/certs/uaexpert.der"
+                                         "../etc/PKI/trusted/certs/uaexpert.der"
+                                         "../etc/PKI/trusted/certs/ca.crt.der",
                                  }),
                 issuers_paths({
-                                      "../etc/PKI/trusted/certs/ca.crt.der",
                               }),
                 revocation_list_paths({
                                               "../etc/PKI/trusted/crl/ca.crl"
@@ -55,6 +55,7 @@ namespace oplc
         std::vector<std::string> issuers_paths;
         std::vector<std::string> revocation_list_paths;
         std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> password_logins;
+        std::unordered_map<std::string, opcua_server::UserRoleType> user_roles;
 
         bool allow_anonymous;
 

@@ -1,5 +1,4 @@
 #include <cstdlib>
-#include <mbedtls/x509_crt.h>
 
 #include "spdlog/spdlog.h"
 #include "opc_ua_server.h"
@@ -25,7 +24,7 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
         auto file = loadFile(path.data());
         if (file.length == 0)
         {
-            spdlog::error("OPC UA server: could not load trusted certificate with path: {}", path);
+            spdlog::warn("OPC UA server: could not load trusted certificate with path: {}", path);
             continue;
         }
         trusted.push_back(file);
@@ -45,8 +44,6 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
     }
 
 
-
-    //TODO: handle issuers, using CAs as trusted certificates works
     std::vector<UA_ByteString> issuers;
     for (const auto &path: config.issuers_paths)
     {
@@ -74,7 +71,8 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
             revocation_list.data(),        // *revocationList,
             revocation_list.size(),         // revocationListSize
             config.allow_anonymous,
-            config.password_logins
+            config.password_logins,
+            config.user_roles
     );
 
 
@@ -149,9 +147,80 @@ void oplc::opcua_server::opc_ua_service_run(const GlueVariablesBinding &binding,
     {
         throw std::runtime_error("OPC UA server: Could not run server.");
     }
-    //TODO: delete context_store items safely
-    // reference: https://stackoverflow.com/questions/16527673/c-one-stdvector-containing-template-class-of-multiple-types
     spdlog::debug("OPC UA server: Stopping server.");
+
     UA_Server_delete(server);
 
+    // prevent memory leaks
+    for (auto login: server_config.password_logins)
+    {
+        UA_String_clear(&login.username);
+        UA_String_clear(&login.password);
+    }
+
+    for (auto ctx: context_store)
+    {
+        spdlog::debug("OPC UA server: cleaning up node '{}'.", ctx->name);
+        switch (ctx->type)
+        {
+            case (IECVT_BOOL):
+                delete dynamic_cast<NodeContext<UA_Boolean> *>(ctx);
+                break;
+            case (IECVT_SINT):
+                delete dynamic_cast<NodeContext<UA_SByte> *>(ctx);
+                break;
+            case (IECVT_USINT):
+                delete dynamic_cast<NodeContext<UA_Byte> *>(ctx);
+                break;
+            case (IECVT_INT):
+                delete dynamic_cast<NodeContext<UA_Int16> *>(ctx);
+                break;
+            case (IECVT_UINT):
+                delete dynamic_cast<NodeContext<UA_UInt16> *>(ctx);
+                break;
+
+            case (IECVT_DINT):
+                delete dynamic_cast<NodeContext<UA_Int32> *>(ctx);
+                break;
+
+            case (IECVT_UDINT):
+                delete dynamic_cast<NodeContext<UA_UInt32> *>(ctx);
+                break;
+
+            case (IECVT_LINT):
+                delete dynamic_cast<NodeContext<UA_Int64> *>(ctx);
+                break;
+
+            case (IECVT_ULINT):
+                delete dynamic_cast<NodeContext<UA_UInt64> *>(ctx);
+                break;
+
+            case (IECVT_BYTE):
+                delete dynamic_cast<NodeContext<UA_Byte> *>(ctx);
+                break;
+
+            case (IECVT_WORD):
+                delete dynamic_cast<NodeContext<UA_UInt16> *>(ctx);
+                break;
+
+            case (IECVT_DWORD):
+                delete dynamic_cast<NodeContext<UA_UInt32> *>(ctx);
+                break;
+
+            case (IECVT_LWORD):
+                delete dynamic_cast<NodeContext<UA_UInt64> *>(ctx);
+                break;
+
+            case (IECVT_REAL):
+                delete dynamic_cast<NodeContext<UA_Float> *>(ctx);
+                break;
+
+            case (IECVT_LREAL):
+                delete dynamic_cast<NodeContext<UA_Double> *>(ctx);
+                break;
+
+            default:
+                break;
+        }
+    }
 };

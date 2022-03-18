@@ -57,7 +57,7 @@ function cmake_build_and_test {
     echo "Building the application"
     mkdir build
     cd build
-    cmake .. -DOPLC_ALL=ON -DUA_ENABLE_ENCRYPTION=ON -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=100
+    cmake .. -DOPLC_ALL=ON -DUA_ENABLE_ENCRYPTION=ON -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=200
     make
 
     echo "Executing platform tests"

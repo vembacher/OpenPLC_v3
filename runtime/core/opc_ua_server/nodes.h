@@ -16,48 +16,15 @@ extern "C" {
 
 using namespace std::chrono_literals;
 
+
 class INodeContext
 {
     //TODO: evaluate which methods could be pulled into base class
-};
 
-template<typename T>
-class NodeContext : public INodeContext
-{
 public:
     std::string name;
-
-    T read()
-    {
-        std::lock_guard<std::mutex> cache_lock{mutex_self};
-
-        //check freshness of cached value, if it's too old we grab a fresh value from the glue variable
-        if ((std::chrono::system_clock::now() - cache_timestamp) > cache_ttl)
-        {
-            std::lock_guard<std::mutex> glue_lock{*mutex_glue};
-            cache = *value;
-        }
-        cache_timestamp = std::chrono::system_clock::now();
-        return cache;
-    }
-
-    void write(T requested_value)
-    {
-        std::lock_guard<std::mutex> cache_lock{mutex_self};
-
-        {
-            std::lock_guard<std::mutex> glue_guard{*mutex_glue};
-            *value = requested_value;
-        }
-        cache = requested_value;
-        cache_timestamp = std::chrono::system_clock::now();
-    }
-
-    NodeContext(T *value, std::mutex *mutexGlue, IecGlueValueType type, std::string name) :
-            value(value), mutex_glue(mutexGlue), type(type), name(std::move(name))
-    {
-        read(); //update cache, this will update the timestamp;
-    }
+    IecGlueValueType type;
+    bool writable;
 
     const UA_DataType *get_ua_type()
     {
@@ -98,8 +65,51 @@ public:
         }
     }
 
+    virtual ~INodeContext() = default;
+};
+
+template<typename T>
+class NodeContext : public INodeContext
+{
+public:
+
+    T read()
+    {
+        std::lock_guard<std::mutex> cache_lock{mutex_self};
+
+        //check freshness of cached value, if it's too old we grab a fresh value from the glue variable
+        if ((std::chrono::system_clock::now() - cache_timestamp) > cache_ttl)
+        {
+            std::lock_guard<std::mutex> glue_lock{*mutex_glue};
+            cache = *value;
+        }
+        cache_timestamp = std::chrono::system_clock::now();
+        return cache;
+    }
+
+    void write(T requested_value)
+    {
+        if (!writable) return;
+        std::lock_guard<std::mutex> cache_lock{mutex_self};
+
+        {
+            std::lock_guard<std::mutex> glue_guard{*mutex_glue};
+            *value = requested_value;
+        }
+        cache = requested_value;
+        cache_timestamp = std::chrono::system_clock::now();
+    }
+
+    NodeContext(T *value, std::mutex *mutexGlue, IecGlueValueType type, std::string name, bool writable) :
+            value(value), mutex_glue(mutexGlue)
+    {
+        this->type = type;
+        this->name = std::move(name);
+        this->writable = writable;
+        read(); //update cache, this will update the timestamp;
+    }
+
 private:
-    IecGlueValueType type;
     T cache;
     T *value;
     std::chrono::time_point<std::chrono::system_clock> cache_timestamp;

@@ -277,7 +277,7 @@ void *oplc::modbusm::modbus_master_indexed_poll(void *args)
                     );
                 }
 
-                nanosleep(&ts, NULL);
+                nanosleep(&ts, nullptr);
                 int result = modbus_write_bits(mb_ctx,
                                                mapping->coils.start_address,
                                                mapping->coils.num_regs,
@@ -290,7 +290,7 @@ void *oplc::modbusm::modbus_master_indexed_poll(void *args)
             if (mapping->input_registers.num_regs != 0)
             {
                 auto rw16_buffer = reinterpret_cast<uint16_t *>(rw_buffer);
-                nanosleep(&ts, NULL);
+                nanosleep(&ts, nullptr);
                 int result = modbus_read_input_registers(mb_ctx, mapping->input_registers.start_address,
                                                          mapping->input_registers.num_regs, rw16_buffer);
                 IF_NOT_MODBUS_ERROR(result, "read input registers")

@@ -93,7 +93,8 @@ namespace oplc
                                                        const UA_ByteString *revocationList,
                                                        size_t revocationListSize,
                                                        UA_Boolean allowAnonymous,
-                                                       std::vector<UA_UsernamePasswordLogin> password_logins
+                                                       std::vector<UA_UsernamePasswordLogin> password_logins,
+                                                       std::unordered_map<std::string, opcua_server::UserRoleType>user_roles
         );
 
 
@@ -236,9 +237,9 @@ UA_ServerConfig_addNetworkLayerWS(UA_ServerConfig *conf, UA_UInt16 portNumber,
          * @param revocationListSize The revocationList size.
          */
         UA_EXPORT UA_StatusCode
-        UA_ServerConfig_addSecurityPolicies(UA_ServerConfig *config,
-                                            const UA_ByteString *certificate,
-                                            const UA_ByteString *privateKey
+        UA_ServerConfig_addAllSecurityPolicies(UA_ServerConfig *config,
+                                               const UA_ByteString *certificate,
+                                               const UA_ByteString *privateKey
 
         );
 

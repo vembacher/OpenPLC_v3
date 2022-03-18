@@ -180,16 +180,51 @@ std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> parse_users(const char
 
         if (std::regex_search(line, matches, re))
         {
-            std::string user;
-            std::string password;
+            std::string user = matches[1];
+            std::string password = matches[2];
 
-            user = matches[1];
-            password = matches[2];
+            auto user_ua = UA_String_fromChars(user.data());
+            auto password_ua = UA_String_fromChars(password.data());
+
             oplc::opcua_server::UA_UsernamePasswordLogin login = {
-                    UA_String_fromChars(user.data()),
-                    UA_String_fromChars(password.data())
+                    user_ua,
+                    password_ua
             };
             result.emplace_back(login);
+        }
+    }
+    return result;
+
+}
+
+std::unordered_map<std::string, oplc::opcua_server::UserRoleType> parse_roles(const char *path)
+{
+
+    //very primitive regex used to parse some information from the active program st file
+    std::regex re{
+            R"(([^\s^,]{1,128}),(admin|operator|observer))",
+            std::regex::ECMAScript};
+
+    std::unordered_map<std::string, oplc::opcua_server::UserRoleType> result;
+    auto file = std::ifstream(path);
+    while (file)
+    {
+        std::string line;
+        std::getline(file, line);
+        std::smatch matches;
+
+        if (std::regex_search(line, matches, re))
+        {
+            std::string user = matches[1];
+            std::string role = matches[2];
+            if (role == "admin")
+                result[user] = oplc::opcua_server::UserRoleType::ADMIN;
+            else if (role == "operator")
+                result[user] = oplc::opcua_server::UserRoleType::OPERATOR;
+            else if (role == "observer")
+                result[user] = oplc::opcua_server::UserRoleType::OBSERVER;
+            else
+                throw std::invalid_argument{"OPC UA server: unsupported role."};
         }
     }
     return result;
@@ -249,6 +284,10 @@ int opcua_server_cfg_handler(void *user_data, const char *section,
     {
         config->password_logins = parse_users(value);
     }
+    else if (strcmp(name, "roles_path") == 0)
+    {
+        config->user_roles = parse_roles(value);
+    }
     else if (strcmp(name, "trust_list_paths") == 0)
     {
         spdlog::warn("OPCUA Server: 'trust_list_paths' config field is not implemented, using default.");
@@ -257,8 +296,6 @@ int opcua_server_cfg_handler(void *user_data, const char *section,
     {
         spdlog::warn("OPC UA Server: 'revocation_list_paths' config field is not implemented, using default.");
     }
-
-
     else
     {
         spdlog::warn("Unknown configuration item {}", name);
