@@ -11,8 +11,11 @@ extern "C" {
 #include <open62541/plugin/log_stdout.h>
 }
 
+#include "spdlog/spdlog.h"
+
 #include "nodes.h"
 #include "opc_ua_utils.h"
+#include "open62541/client_subscriptions.h"
 
 
 template<typename T>
@@ -52,16 +55,42 @@ static void afterWriteValue(UA_Server *server,
     //sessionId->identifier.numeric != 1 should catch scenario where we write again to the context after just reading
     //because this method is called after we call 'UA_Server_writeValue(server, currentNodeId, value);'
     // in updateCurrentValue
-    if (sessionId->identifier.numeric != 1 && data->hasValue)
-    {
-        auto context = static_cast<NodeContext<T> *>(nodeContext);
+    UA_ByteString sessionIdReadable;
+    UA_ByteString nodeIdReadable;
+    UA_ByteString_init(&sessionIdReadable);
+    UA_ByteString_init(&nodeIdReadable);
 
-        UA_LOG_INFO(
-                UA_Log_Stdout,
-                UA_LOGCATEGORY_USERLAND,
-                "The variable was written to."
-        );
+    UA_NodeId_print(sessionId, &sessionIdReadable);
+    UA_NodeId_print(nodeId, &nodeIdReadable);
+    auto sessionIdReadableString = std::string{reinterpret_cast<char *>(sessionIdReadable.data),
+                                               sessionIdReadable.length};
+    auto nodeIdReadableString = std::string{reinterpret_cast<char *>(nodeIdReadable.data), nodeIdReadable.length};
+
+    spdlog::debug("OPC UA Server: afterWriteValue called.\n"
+                  "                                  NodeId:       {}\n"
+                  "                                  SessionID:    {}\n"
+                  "                                  nodeContext?: {}\n"
+                  "                                  hasValue?: {}\n"
+                  "                                  value: {}\n",
+                  nodeIdReadableString.data(), sessionIdReadableString.data(), nodeContext != nullptr, data->hasValue,
+                  (void *) (data));
+    UA_ByteString_clear(&sessionIdReadable);
+    UA_ByteString_clear(&nodeIdReadable);
+    auto context = static_cast<NodeContext<T> *>(nodeContext);
+
+    // this might force writes after reading
+    if (data->hasValue && context && context->writable)
+    {
+        auto name = context ? context->name : "unknown";
+        spdlog::info("OPC UA Server: variable '{}' was written to, by {}", context->name,
+                     name.data());
         context->write(*static_cast<T *>(data->value.data));
+    }
+    else
+    {
+        auto name = context ? context->name : "unknown";
+
+        spdlog::info("OPC UA Server: variable '{}' was NOT written to.", context->name);
     }
 }
 
@@ -92,14 +121,12 @@ UA_NodeId addVariable(
 
     UA_Server_addVariableNode(server, currentNodeId, parentNodeId, parentReferenceNodeId, currentName,
                               variableTypeNodeId, attr, context, nullptr);
-
     UA_ValueCallback callback;
     callback.onRead = beforeReadValue<T>;
     callback.onWrite = afterWriteValue<T>;
     UA_Server_setVariableNode_valueCallback(server, currentNodeId, callback);
 
     updateCurrentValue<T>(server, context);
-//    context_store.emplace_back(context);
     return currentNodeId;
 }
 
@@ -122,9 +149,11 @@ std::vector<INodeContext *> add_nodes_to_server(UA_Server *server, const GlueVar
     for (int i = 0; i < bindings.size; ++i)
     {
         auto glue_var = bindings.glue_variables[i];
-        auto writable = glue_var.dir ==
-                                glue_var.msi < 100 // variables from the master should not be addressable, too magic numbery right now
-                        && glue_var.dir == IecLocationDirection::IECLDT_OUT; // reference https://www.openplcproject.com/reference/modbus-slave/
+        auto writable =
+                // variables from the master should not be addressable, too magic numbery right now
+                glue_var.msi < 100
+                // reference https://www.openplcproject.com/reference/modbus-slave/
+                && glue_var.dir == IecLocationDirection::IECLDT_OUT;
         if (glue_var.type != IECVT_BOOL)
         {
 
