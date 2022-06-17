@@ -183,7 +183,7 @@ include(FetchContent)
 
 set(UA_ENABLE_ENCRYPTION ON)
 set(UA_NAMESPACE_ZERO FULL)
-set(UA_LOGLEVEL 200)
+set(UA_LOGLEVEL 300)
 FetchContent_Declare(open62541
         PREFIX "open62541"
         GIT_REPOSITORY "https://github.com/open62541/open62541.git"
