@@ -54,7 +54,7 @@ namespace oplc
         std::vector<std::string> trust_list_paths;
         std::vector<std::string> issuers_paths;
         std::vector<std::string> revocation_list_paths;
-        std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> password_logins;
+        std::vector<oplc::opcua_server::user_entry> user_logins;
         std::unordered_map<std::string, opcua_server::UserRoleType> user_roles;
 
         bool allow_anonymous;

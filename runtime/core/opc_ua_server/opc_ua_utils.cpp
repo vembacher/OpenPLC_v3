@@ -162,39 +162,23 @@ std::vector<VariableDescription> get_variable_descriptions()
     return result;
 }
 
-std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> parse_users(const char *path)
+std::vector<oplc::opcua_server::user_entry> parse_users(const std::string &path)
 {
-
-    //very primitive regex used to parse some information from the active program st file
-    std::regex re{
-            R"(([A-Za-z0-9]{1,128}),([A-Za-z0-9*.!@#$%^&\(\)\{\}\[\]:;<>,.?\/~_\+\-=|]{8,128}))",
-            std::regex::ECMAScript};
-
-    std::vector<oplc::opcua_server::UA_UsernamePasswordLogin> result;
-    auto file = std::ifstream(path);
-    while (file)
+    auto result = std::vector<oplc::opcua_server::user_entry>{};
+    std::ifstream input(path);
+    for (std::string line; getline(input, line);)
     {
-        std::string line;
-        std::getline(file, line);
-        std::smatch matches;
-
-        if (std::regex_search(line, matches, re))
+        auto delim_idx = line.find(':');
+        if (delim_idx == line.length())
         {
-            std::string user = matches[1];
-            std::string password = matches[2];
-
-            auto user_ua = UA_String_fromChars(user.data());
-            auto password_ua = UA_String_fromChars(password.data());
-
-            oplc::opcua_server::UA_UsernamePasswordLogin login = {
-                    user_ua,
-                    password_ua
-            };
-            result.emplace_back(login);
+            // todo: log
+            continue;
         }
+        auto username = line.substr(0, delim_idx);
+        auto hashed_password = line.substr(delim_idx + 1, line.length());
+        result.push_back(oplc::opcua_server::user_entry{username, hashed_password});
     }
     return result;
-
 }
 
 std::unordered_map<std::string, oplc::opcua_server::UserRoleType> parse_roles(const char *path)
@@ -282,7 +266,7 @@ int opcua_server_cfg_handler(void *user_data, const char *section,
     }
     else if (strcmp(name, "users_path") == 0)
     {
-        config->password_logins = parse_users(value);
+        config->user_logins = parse_users(value);
     }
     else if (strcmp(name, "roles_path") == 0)
     {

@@ -11,6 +11,8 @@
 
 #include <unordered_map>
 #include <string>
+#include <vector>
+#include <fstream>
 
 extern "C" {
 #include <open62541/plugin/accesscontrol.h>
@@ -28,11 +30,18 @@ namespace oplc
             OBSERVER,
         };
 
-        typedef struct
+//        typedef struct
+//        {
+//            UA_String username;
+//            UA_String password;
+//        } UA_UsernamePasswordLogin;
+
+        struct user_entry
         {
-            UA_String username;
-            UA_String password;
-        } UA_UsernamePasswordLogin;
+            std::string username;
+            std::string hashed_password;
+        };
+
 
         /* Default access control. The log-in can be anonymous or username-password. A
          * logged-in user has all access rights.
@@ -40,11 +49,14 @@ namespace oplc
          * The certificate verification plugin lifecycle is moved to the access control
          * system. So it is cleared up eventually together with the AccessControl. */
         UA_StatusCode
-        UA_AccessControl_default(UA_ServerConfig *config, UA_Boolean allowAnonymous,
-                                 UA_CertificateVerification *verifyX509,
-                                 const UA_ByteString *userTokenPolicyUri, size_t usernamePasswordLoginSize,
-                                 const UA_UsernamePasswordLogin *usernamePasswordLogin,
-                                 std::unordered_map<std::string, opcua_server::UserRoleType> userRoles);
+        UA_AccessControl_default(
+            UA_ServerConfig * config,
+            UA_Boolean allowAnonymous,
+            UA_CertificateVerification *verifyX509,
+            const UA_ByteString *userTokenPolicyUri,
+            std::vector<user_entry> userLogins,
+            std::unordered_map<std::string, opcua_server::UserRoleType>userRoles
+        );
     }
 }
 #endif //RUNTIME_CORE_CONTROL_H

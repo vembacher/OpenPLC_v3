@@ -287,7 +287,7 @@ if (OPLC_MAIN_PROGRAM)
 
     #TODO: update this
     target_link_libraries(openplc open62541)
-
+    target_link_libraries(openplc crypt)
     # -fpermissive will allow some nonconforming code to compile
     add_compile_options(openplc -fpermissive)
 

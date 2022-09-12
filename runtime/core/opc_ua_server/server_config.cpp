@@ -18,7 +18,6 @@ extern "C" {
 #ifdef UA_ENABLE_WEBSOCKET_SERVER
 #include <open62541/network_ws.h>
 #endif
-#include <open62541/plugin/accesscontrol_default.h>
 #include <open62541/plugin/nodestore_default.h>
 #include <open62541/plugin/log_stdout.h>
 #include <open62541/plugin/pki_default.h>
@@ -27,7 +26,7 @@ extern "C" {
 
 #include <vector>
 #include "server_config.h"
-
+#include "access_control.h"
 
 namespace oplc
 {
@@ -127,9 +126,6 @@ namespace oplc
 
             return UA_STATUSCODE_GOOD;
         }
-
-        static const size_t usernamePasswordsSize = 0;
-        static UA_UsernamePasswordLogin usernamePasswords[0]{};
 
         static UA_StatusCode
         setDefaultConfig(UA_ServerConfig *conf)
@@ -489,7 +485,7 @@ UA_ServerConfig_addNetworkLayerWS(UA_ServerConfig *conf, UA_UInt16 portNumber,
             /* Initialize the Access Control plugin */
             retval = UA_AccessControl_default(config, true, nullptr,
                                               &config->securityPolicies[config->securityPoliciesSize - 1].policyUri,
-                                              usernamePasswordsSize, usernamePasswords,
+                                              std::vector<user_entry>{},
                                               std::unordered_map<std::string, opcua_server::UserRoleType>{});
             if (retval != UA_STATUSCODE_GOOD)
             {
@@ -642,8 +638,8 @@ UA_ServerConfig_addNetworkLayerWS(UA_ServerConfig *conf, UA_UInt16 portNumber,
                                                        const UA_ByteString *revocationList,
                                                        size_t revocationListSize,
                                                        UA_Boolean allowAnonymous,
-                                                       std::vector<UA_UsernamePasswordLogin> password_logins,
-                                                       const std::unordered_map<std::string, opcua_server::UserRoleType> user_roles
+                                                       const std::vector<user_entry> user_logins,
+                                                       const std::unordered_map<std::string, opcua_server::UserRoleType> userRoles
         )
         {
             UA_StatusCode retval = setDefaultConfig(conf);
@@ -683,7 +679,8 @@ UA_ServerConfig_addNetworkLayerWS(UA_ServerConfig *conf, UA_UInt16 portNumber,
                                                allowAnonymous,
                                                &accessControlVerification,
                                                &conf->securityPolicies[conf->securityPoliciesSize - 1].policyUri,
-                                               password_logins.size(), password_logins.data(), user_roles);
+                                               user_logins,
+                                               userRoles);
             if (retval != UA_STATUSCODE_GOOD)
             {
                 UA_ServerConfig_clean(conf);

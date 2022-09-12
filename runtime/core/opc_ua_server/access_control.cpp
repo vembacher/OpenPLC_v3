@@ -32,10 +32,9 @@ namespace oplc
         typedef struct
         {
             UA_Boolean allowAnonymous;
-            size_t usernamePasswordLoginSize;
-            UA_UsernamePasswordLogin *usernamePasswordLogin;
+            std::vector<user_entry> userLogins;
             UA_CertificateVerification verifyX509;
-            std::unordered_map<std::string, opcua_server::UserRoleType> user_roles;
+            std::unordered_map<std::string, opcua_server::UserRoleType> userRoles;
         } AccessControlContext;
 
         enum SessionContextType
@@ -60,6 +59,35 @@ namespace oplc
         /************************/
         /* Access Control Logic */
         /************************/
+
+
+        // constant runtime to prevent side channel attacks.
+        bool secure_cmp(const std::string &a, const std::string &b)
+        {
+            bool acc = true;
+            for (size_t i = 0; i < std::min(a.length(), b.length()); ++i)
+            {
+                acc &= a[i] == b[i];
+            }
+            return acc && a.length() == b.length();
+        }
+
+        bool verify_login(const std::vector<user_entry> &logins, const std::string &username, const std::string &password)
+        {
+            // find username
+            const user_entry *login_entry = nullptr;
+            for (const auto &login: logins)
+            {
+                if (login.username == username)
+                {
+                    login_entry = &login;
+                }
+            }
+            if (login_entry == nullptr)
+            { return false; }
+            auto calculated_hash = crypt(password.c_str(), login_entry->hashed_password.c_str());
+            return secure_cmp(calculated_hash, login_entry->hashed_password);
+        }
 
         static UA_StatusCode
         activateSession_default(UA_Server *server, UA_AccessControl *ac,
@@ -123,17 +151,16 @@ namespace oplc
                 if (userToken->userName.length == 0 && userToken->password.length == 0)
                     return UA_STATUSCODE_BADIDENTITYTOKENINVALID;
 
-                /* Try to match username/pw */
-                UA_Boolean match = false;
-                for (size_t i = 0; i < context->usernamePasswordLoginSize; i++)
-                {
-                    if (UA_String_equal(&userToken->userName, &context->usernamePasswordLogin[i].username) &&
-                        UA_String_equal(&userToken->password, &context->usernamePasswordLogin[i].password))
-                    {
-                        match = true;
-                        break;
-                    }
-                }
+
+                auto username_string = std::string{
+                        reinterpret_cast<char *>(userToken->userName.data),
+                        static_cast<size_t>(userToken->userName.length),
+                };
+                auto password_string = std::string{
+                        reinterpret_cast<char *>(userToken->password.data),
+                        static_cast<size_t>(userToken->password.length),
+                };
+                UA_Boolean match = verify_login(context->userLogins,username_string,password_string);
                 if (!match)
                     return UA_STATUSCODE_BADUSERACCESSDENIED;
 
@@ -237,7 +264,7 @@ namespace oplc
                     // For now, we will allow operators and admins to do this,
                     // however this does not affect anything at the moment,
                     // this should be re-evaluated if executable nodes are added.
-                    switch (ac_ctx->user_roles[*username])
+                    switch (ac_ctx->userRoles[*username])
                     {
                         case UserRoleType::ADMIN:
                         case UserRoleType::OPERATOR:
@@ -272,7 +299,7 @@ namespace oplc
                     // For now, we will allow operators and admins to do this,
                     // however this does not affect anything at the moment,
                     // this should be re-evaluated if executable nodes are added.
-                    auto roleType = ac_ctx->user_roles[*username];
+                    auto roleType = ac_ctx->userRoles[*username];
                     if ((roleType == UserRoleType::ADMIN) || (roleType == UserRoleType::OPERATOR))
                         return true;
                 }
@@ -298,7 +325,7 @@ namespace oplc
                 try
                 {
                     // Admins have all rights
-                    if (ac_ctx->user_roles[*username] == UserRoleType::ADMIN)
+                    if (ac_ctx->userRoles[*username] == UserRoleType::ADMIN)
                         return true;
                 }
                 catch (const std::out_of_range &_)
@@ -322,7 +349,7 @@ namespace oplc
                 try
                 {
                     // Admins have all rights
-                    if (ac_ctx->user_roles[*username] == UserRoleType::ADMIN)
+                    if (ac_ctx->userRoles[*username] == UserRoleType::ADMIN)
                         return true;
                 }
                 catch (const std::out_of_range &_)
@@ -346,7 +373,7 @@ namespace oplc
                 try
                 {
                     // Admins have all rights
-                    if (ac_ctx->user_roles[*username] == UserRoleType::ADMIN)
+                    if (ac_ctx->userRoles[*username] == UserRoleType::ADMIN)
                         return true;
                 }
                 catch (const std::out_of_range &_)
@@ -370,7 +397,7 @@ namespace oplc
                 try
                 {
                     // Admins have all rights
-                    if (ac_ctx->user_roles[*username] == UserRoleType::ADMIN)
+                    if (ac_ctx->userRoles[*username] == UserRoleType::ADMIN)
                         return true;
                 }
                 catch (const std::out_of_range &_)
@@ -394,7 +421,7 @@ namespace oplc
                 try
                 {
                     // Admins have all rights
-                    if (ac_ctx->user_roles[*username] == UserRoleType::ADMIN)
+                    if (ac_ctx->userRoles[*username] == UserRoleType::ADMIN)
                         return true;
                 }
                 catch (const std::out_of_range &_)
@@ -469,14 +496,6 @@ allowHistoryUpdateDeleteRawModified_default(UA_Server *server, UA_AccessControl 
 
             if (context)
             {
-                for (size_t i = 0; i < context->usernamePasswordLoginSize; i++)
-                {
-                    UA_String_clear(&context->usernamePasswordLogin[i].username);
-                    UA_String_clear(&context->usernamePasswordLogin[i].password);
-                }
-                if (context->usernamePasswordLoginSize > 0)
-                    UA_free(context->usernamePasswordLogin);
-
                 if (context->verifyX509.clear)
                     context->verifyX509.clear(&context->verifyX509);
 
@@ -486,11 +505,14 @@ allowHistoryUpdateDeleteRawModified_default(UA_Server *server, UA_AccessControl 
         }
 
         UA_StatusCode
-        UA_AccessControl_default(UA_ServerConfig *config, UA_Boolean allowAnonymous,
-                                 UA_CertificateVerification *verifyX509,
-                                 const UA_ByteString *userTokenPolicyUri, size_t usernamePasswordLoginSize,
-                                 const UA_UsernamePasswordLogin *usernamePasswordLogin,
-                                 std::unordered_map<std::string, opcua_server::UserRoleType> userRoles)
+        UA_AccessControl_default(
+                UA_ServerConfig *config,
+                UA_Boolean allowAnonymous,
+                UA_CertificateVerification *verifyX509,
+                const UA_ByteString *userTokenPolicyUri,
+                std::vector<user_entry> userLogins,
+                std::unordered_map<std::string, opcua_server::UserRoleType> userRoles
+                )
         {
             UA_LOG_WARNING(&config->logger, UA_LOGCATEGORY_SERVER,
                            "AccessControl: Unconfigured AccessControl. Users have all permissions.");
@@ -551,30 +573,13 @@ allowHistoryUpdateDeleteRawModified_default(UA_Server *server, UA_AccessControl 
                             "AccessControl: x509 certificate user authentication is enabled");
             }
 
-            /* Copy username/password to the access control plugin */
-            if (usernamePasswordLoginSize > 0)
-            {
-                context->usernamePasswordLogin = (UA_UsernamePasswordLogin *)
-                        UA_malloc(usernamePasswordLoginSize * sizeof(UA_UsernamePasswordLogin));
-                if (!context->usernamePasswordLogin)
-                    return UA_STATUSCODE_BADOUTOFMEMORY;
-                context->usernamePasswordLoginSize = usernamePasswordLoginSize;
-                for (size_t i = 0; i < usernamePasswordLoginSize; i++)
-                {
-                    UA_String_copy(&usernamePasswordLogin[i].username,
-                                   &context->usernamePasswordLogin[i].username);
-                    UA_String_copy(&usernamePasswordLogin[i].password,
-                                   &context->usernamePasswordLogin[i].password);
-                }
-            }
-
             /* Set the allowed policies */
             size_t policies = 0;
             if (allowAnonymous)
                 policies++;
             if (verifyX509)
                 policies++;
-            if (usernamePasswordLoginSize > 0)
+            if (userLogins.size() > 0)
                 policies++;
             ac->userTokenPoliciesSize = 0;
             ac->userTokenPolicies = (UA_UserTokenPolicy *)
@@ -609,7 +614,7 @@ allowHistoryUpdateDeleteRawModified_default(UA_Server *server, UA_AccessControl 
                 policies++;
             }
 
-            if (usernamePasswordLoginSize > 0)
+            if (userLogins.size() > 0)
             {
                 ac->userTokenPolicies[policies].tokenType = UA_USERTOKENTYPE_USERNAME;
                 ac->userTokenPolicies[policies].policyId = UA_STRING_ALLOC(USERNAME_POLICY);
@@ -625,7 +630,8 @@ allowHistoryUpdateDeleteRawModified_default(UA_Server *server, UA_AccessControl 
                 UA_ByteString_copy(userTokenPolicyUri,
                                    &ac->userTokenPolicies[policies].securityPolicyUri);
             }
-            context->user_roles = std::move(userRoles);
+            context->userLogins = std::move(userLogins);
+            context->userRoles = std::move(userRoles);
             return UA_STATUSCODE_GOOD;
         }
     }

@@ -16,7 +16,6 @@
 
 extern "C" {
 #include <open62541/server.h>
-#include <open62541/plugin/accesscontrol.h>
 };
 
 //_UA_BEGIN_DECLS
@@ -93,8 +92,8 @@ namespace oplc
                                                        const UA_ByteString *revocationList,
                                                        size_t revocationListSize,
                                                        UA_Boolean allowAnonymous,
-                                                       std::vector<UA_UsernamePasswordLogin> password_logins,
-                                                       std::unordered_map<std::string, opcua_server::UserRoleType>user_roles
+                                                       std::vector<user_entry> user_logins,
+                                                       std::unordered_map<std::string, opcua_server::UserRoleType>userRoles
         );
 
 

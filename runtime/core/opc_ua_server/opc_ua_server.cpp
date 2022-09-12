@@ -71,7 +71,7 @@ UA_Server *get_ua_server_with_encryption(const GlueVariablesBinding &binding, co
             revocation_list.data(),        // *revocationList,
             revocation_list.size(),         // revocationListSize
             config.allow_anonymous,
-            config.password_logins,
+            config.user_logins,
             config.user_roles
     );
 
@@ -152,11 +152,11 @@ void oplc::opcua_server::opc_ua_service_run(const GlueVariablesBinding &binding,
     UA_Server_delete(server);
 
     // prevent memory leaks
-    for (auto login: server_config.password_logins)
-    {
-        UA_String_clear(&login.username);
-        UA_String_clear(&login.password);
-    }
+//    for (auto login: server_config.user_logins)
+//    {
+//        UA_String_clear(&login.username);
+//        UA_String_clear(&login.password);
+//    }
 
     for (auto ctx: context_store)
     {
